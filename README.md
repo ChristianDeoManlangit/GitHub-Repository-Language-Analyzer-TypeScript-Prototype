@@ -51,8 +51,8 @@ Follow these steps to set up the project locally:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/github-language-analyzer.git
-cd github-language-analyzer
+git clone https://github.com/ChristianDeoManlangit/GitHub-Repository-Language-Analyzer-TypeScript-Prototype
+cd GitHub-Repository-Language-Analyzer-TypeScript-Prototype
 
 # 2. Install dependencies
 npm install
