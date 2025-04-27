@@ -16,7 +16,7 @@ const formSchema = z.object({
     .refine(isValidGitHubUrl, {
       message: "Please enter a valid GitHub repository URL",
     }),
-  chartType: z.enum(["pie", "doughnut", "bar", "stacked", "radar"] as const),
+  chartType: z.enum(["pie", "doughnut", "bar", "radar"] as const),
 });
 
 interface RepositoryFormProps {
@@ -60,7 +60,7 @@ export function RepositoryForm({ onSubmit, isLoading }: RepositoryFormProps) {
               )}
             />
           </div>
-          
+
           {/* Chart Type Dropdown */}
           <div>
             <FormField
@@ -80,7 +80,7 @@ export function RepositoryForm({ onSubmit, isLoading }: RepositoryFormProps) {
                     </FormControl>
                     <SelectContent>
                       {CHART_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
+                        type.value !== "stacked" && <SelectItem key={type.value} value={type.value}>
                           {type.label}
                         </SelectItem>
                       ))}
@@ -91,7 +91,7 @@ export function RepositoryForm({ onSubmit, isLoading }: RepositoryFormProps) {
             />
           </div>
         </div>
-        
+
         {/* Submit Button */}
         <Button 
           type="submit"

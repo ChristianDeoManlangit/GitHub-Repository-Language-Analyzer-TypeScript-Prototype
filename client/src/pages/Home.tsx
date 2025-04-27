@@ -22,14 +22,14 @@ export default function Home() {
 
       // Fetch repository data from API
       const response = await fetch(`/api/repo?url=${encodeURIComponent(data.repositoryUrl)}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json() as ErrorResponse;
         throw new Error(errorData.message || "Failed to fetch repository data");
       }
-      
+
       const responseData = await response.json() as ApiResponse;
-      
+
       setState({
         status: 'success',
         repository: responseData.repository,
@@ -50,7 +50,10 @@ export default function Home() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-center text-2xl font-bold mb-8" style={{ color: "#3178c6" }}>
+        GitHub Repository Language Analyzer
+      </h1>
       {/* Form Section */}
       <section className="mb-8">
         <RepositoryForm 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
+import { toast } from "@/hooks/use-toast";
 import { ChartType } from "@shared/schema";
 import { Languages } from "@shared/schema";
 import { prepareChartData, calculatePercentages } from "@/lib/utils";
@@ -40,14 +41,14 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
 
     // Prepare data
     const chartData = prepareChartData(languages, isDarkMode);
-    
+
     // Configure chart based on type
     const type = chartType === 'stacked' ? 'bar' : chartType;
-    
+
     // Common options for all charts
     const options: any = {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true,
       plugins: {
         legend: {
           display: ['pie', 'doughnut', 'radar'].includes(chartType),
@@ -63,7 +64,7 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
         }
       }
     };
-    
+
     // Configure specific chart types
     if (chartType === 'bar' || chartType === 'stacked') {
       options.scales = {
@@ -85,13 +86,13 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
           }
         }
       };
-      
+
       if (chartType === 'stacked') {
         options.scales.x.stacked = true;
         options.scales.y.stacked = true;
       }
     }
-    
+
     if (chartType === 'radar') {
       options.scales = {
         r: {
@@ -136,33 +137,114 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
 
   // Function to download chart as PNG
   const handleDownloadChart = async () => {
-    if (!chartContainerRef.current) return;
-    
+    // Wait for chart to be fully rendered
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const downloadContainer = document.createElement('div');
+    downloadContainer.style.backgroundColor = '#ffffff';
+    downloadContainer.style.padding = '24px';
+    downloadContainer.style.borderRadius = '8px';
+    downloadContainer.style.width = '800px';  // Fixed width for consistent output
+
+    // Create title
+    const title = document.createElement('h3');
+    title.textContent = `Languages Breakdown (${CHART_TYPES.find(c => c.value === chartType)?.label})`;
+    title.style.fontSize = '18px';
+    title.style.fontWeight = '500';
+    title.style.marginBottom = '24px';
+    title.style.color = '#24292e';
+    downloadContainer.appendChild(title);
+
+    // Create a new canvas and copy the chart
+    if (chartRef.current) {
+      const newCanvas = document.createElement('canvas');
+      const width = 800;
+      const height = 800; // Make it square
+
+      newCanvas.width = width;
+      newCanvas.height = height;
+      newCanvas.style.width = '100%';
+      newCanvas.style.height = 'auto';
+
+      const ctx = newCanvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(chartRef.current, 0, 0);
+      }
+
+      const chartContainer = document.createElement('div');
+      chartContainer.style.width = '100%';
+      chartContainer.style.height = 'auto';
+      chartContainer.style.aspectRatio = '1'; // Square aspect ratio
+      chartContainer.style.position = 'relative';
+      chartContainer.appendChild(newCanvas);
+      downloadContainer.appendChild(chartContainer);
+    }
+
+    // Add legend
+    const legendContainer = document.createElement('div');
+    legendContainer.style.display = 'grid';
+    legendContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    legendContainer.style.gap = '8px';
+    legendContainer.style.marginTop = '24px';
+
+    Object.entries(percentages).forEach(([language, percentage]) => {
+      const item = document.createElement('div');
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+
+      const colorDot = document.createElement('span');
+      colorDot.style.width = '12px';
+      colorDot.style.height = '12px';
+      colorDot.style.borderRadius = '50%';
+      colorDot.style.backgroundColor = getLanguageColor(language);
+      colorDot.style.marginRight = '8px';
+
+      const text = document.createElement('span');
+      text.style.fontSize = '14px';
+      text.style.color = '#24292e';
+      text.textContent = `${language}: ${percentage}%`;
+
+      item.appendChild(colorDot);
+      item.appendChild(text);
+      legendContainer.appendChild(item);
+    });
+
+    downloadContainer.appendChild(legendContainer);
+    document.body.appendChild(downloadContainer);
+
+    toast({
+      description: "Starting download...",
+      duration: 3000,
+    });
+
     try {
-      const dataUrl = await toPng(chartContainerRef.current, {
-        backgroundColor: isDarkMode ? '#0d1117' : '#ffffff',
+      const dataUrl = await toPng(downloadContainer, {
         quality: 1.0
       });
-      
+
       const link = document.createElement('a');
       link.download = `${repository}-languages-${chartType}.png`;
       link.href = dataUrl;
       link.click();
+
+      // Clean up
+      document.body.removeChild(downloadContainer);
     } catch (error) {
       console.error('Error downloading chart:', error);
+      document.body.removeChild(downloadContainer);
     }
   };
-  
+
   // Function to generate markdown embed code for the chart
   const generateEmbedCode = async () => {
     if (!chartContainerRef.current) return;
-    
+
     try {
       const dataUrl = await toPng(chartContainerRef.current, {
         backgroundColor: isDarkMode ? '#0d1117' : '#ffffff',
         quality: 1.0
       });
-      
+
       // Create markdown embed code
       const markdownCode = `![${repository} Languages](${dataUrl})`;
       setEmbedUrl(markdownCode);
@@ -171,7 +253,7 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
       console.error('Error generating embed code:', error);
     }
   };
-  
+
   // Function to copy embed code to clipboard
   const copyEmbedCode = () => {
     if (embedInputRef.current) {
@@ -208,15 +290,15 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
           </Button>
         </div>
       </div>
-      
+
       <div 
         ref={chartContainerRef}
         className="chart-container bg-white dark:bg-[#1e293b] p-4 rounded-md" 
-        style={{ position: 'relative', height: '400px', width: '100%' }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}
       >
         <canvas ref={chartRef} id="languageChart"></canvas>
       </div>
-      
+
       {/* Language Legend */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-6">
         {Object.entries(percentages).map(([language, percentage]) => (
@@ -229,7 +311,7 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
           </div>
         ))}
       </div>
-      
+
       {/* Embed Dialog */}
       <Dialog open={isEmbedDialogOpen} onOpenChange={setIsEmbedDialogOpen}>
         <DialogContent className="bg-white dark:bg-[#1e293b] border-gray-200 dark:border-gray-700 text-github-dark dark:text-github-darkmode-text">
@@ -256,8 +338,7 @@ export function LanguageChart({ languages, chartType, repository = "repository" 
               </Button>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Note: This embed code uses a data URL which may be very long. For better performance, consider 
-              hosting the image on a service like GitHub or Imgur.
+              Note: The embed code for this site is purely for developmental testing, which results in a data URL that is very long. A better approach will be implemented in the future.
             </p>
           </div>
         </DialogContent>
@@ -271,6 +352,6 @@ const CHART_TYPES = [
   { value: 'pie', label: 'Pie Chart' },
   { value: 'doughnut', label: 'Donut Chart' },
   { value: 'bar', label: 'Bar Chart' },
-  { value: 'stacked', label: 'Stacked Bar Chart' },
-  { value: 'radar', label: 'Radar Chart' }
+  { value: 'radar', label: 'Radar Chart' },
+  { value: 'stacked', label: 'Stacked Bar Chart' }
 ];
